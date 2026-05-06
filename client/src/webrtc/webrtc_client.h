@@ -53,13 +53,20 @@ class WebRtcClient {
   // Send a single screen frame. JPEG-encoded then framed as a binary
   // data-channel payload (since libdatachannel's Track API requires an
   // RTP encoder we don't want to ship; the server demuxes by channel
-  // label).
+  // label). The capture timestamp is stamped into the packet header so
+  // the server can correlate frames with prompt-trigger timestamps.
   bool SendFrame(const cv::Mat& bgr_frame, uint64_t seq);
 
-  // Send a user query. The matching response is delivered to the
-  // ResponseCallback installed via SetResponseCallback().
+  // Send a user query. ``trigger_ts_us`` is the wall-clock microsecond
+  // timestamp the prompt is anchored to (e.g. the moment the user
+  // started typing); the server samples frames in
+  // ``[trigger - pre_window_ms, trigger + post_window_ms]``. Pass 0
+  // for trigger_ts_us to disable time-window filtering. The matching
+  // response is delivered to the ResponseCallback installed via
+  // SetResponseCallback().
   bool SendQuery(const std::string& session_id, const std::string& text,
-                 uint32_t num_frames_hint);
+                 uint32_t num_frames_hint, int64_t trigger_ts_us,
+                 uint32_t pre_window_ms, uint32_t post_window_ms);
 
   void SetResponseCallback(ResponseCallback cb);
 

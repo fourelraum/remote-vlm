@@ -116,3 +116,65 @@ class TestTypingDebouncer:
         # Never type at all.
         deb.shutdown()
         assert stub.snapshot() == []
+
+    def test_typing_start_us_unset_before_first_keystroke(self):
+        stub = _RecordingStub()
+        deb = TypingDebouncer(stub, idle_seconds=0.05)
+        try:
+            assert deb.last_typing_start_us() is None
+        finally:
+            deb.shutdown()
+
+    def test_typing_start_us_records_first_keystroke_in_burst(self):
+        stub = _RecordingStub()
+        deb = TypingDebouncer(stub, idle_seconds=10.0)
+        try:
+            before = int(time.time() * 1_000_000)
+            deb.keystroke()
+            after = int(time.time() * 1_000_000)
+            ts = deb.last_typing_start_us()
+            assert ts is not None
+            assert before <= ts <= after
+            # Subsequent keystrokes within the same burst do not reset.
+            time.sleep(0.01)
+            deb.keystroke()
+            assert deb.last_typing_start_us() == ts
+        finally:
+            deb.shutdown()
+
+    def test_typing_start_us_persists_after_idle_stop(self):
+        # The submit path reads last_typing_start_us *after* the user
+        # has stopped typing (Enter pressed, typing-burst ended). The
+        # value must still reflect the most recent burst.
+        stub = _RecordingStub()
+        deb = TypingDebouncer(stub, idle_seconds=0.1)
+        try:
+            deb.keystroke()
+            ts = deb.last_typing_start_us()
+            assert ts is not None
+            # Wait until the idle stop fires.
+            assert _wait_for(
+                lambda: any(c[0] is False for c in stub.snapshot()),
+                timeout=2.0,
+            )
+            assert deb.last_typing_start_us() == ts
+        finally:
+            deb.shutdown()
+
+    def test_typing_start_us_advances_on_new_burst(self):
+        stub = _RecordingStub()
+        deb = TypingDebouncer(stub, idle_seconds=0.1)
+        try:
+            deb.keystroke()
+            first = deb.last_typing_start_us()
+            assert _wait_for(
+                lambda: any(c[0] is False for c in stub.snapshot()),
+                timeout=2.0,
+            )
+            time.sleep(0.05)
+            deb.keystroke()
+            second = deb.last_typing_start_us()
+            assert second is not None and first is not None
+            assert second > first
+        finally:
+            deb.shutdown()

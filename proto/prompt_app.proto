@@ -32,6 +32,15 @@ message Query {
   // Optional client-side hint about how many recent 1 FPS frames the
   // server should consider. 0 means "let the server decide".
   uint32 num_frames_hint = 3;
+  // Wall-clock microseconds (Unix epoch) the prompt is anchored to —
+  // typically the moment the user started typing the query. Lets the
+  // server pick frames captured around that exact instant. 0 disables
+  // time-window filtering and falls back to "everything in buffer".
+  int64 trigger_ts_us = 4;
+  // Half-windows around trigger_ts_us, in milliseconds. 0 -> server
+  // default (3000 ms each).
+  uint32 pre_window_ms = 5;
+  uint32 post_window_ms = 6;
 }
 
 message QueryResponse {

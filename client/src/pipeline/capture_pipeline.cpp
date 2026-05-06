@@ -80,9 +80,13 @@ void CapturePipeline::EndQuery(const std::string& /*session_id*/) {
 
 bool CapturePipeline::SubmitQuery(const std::string& session_id,
                                   const std::string& text,
-                                  uint32_t num_frames_hint) {
+                                  uint32_t num_frames_hint,
+                                  int64_t trigger_ts_us,
+                                  uint32_t pre_window_ms,
+                                  uint32_t post_window_ms) {
   BeginQuery(session_id);
-  return webrtc_->SendQuery(session_id, text, num_frames_hint);
+  return webrtc_->SendQuery(session_id, text, num_frames_hint,
+                            trigger_ts_us, pre_window_ms, post_window_ms);
 }
 
 void CapturePipeline::OnVlmResponse(const std::string& session_id,

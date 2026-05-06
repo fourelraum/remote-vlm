@@ -4,7 +4,9 @@ Talks to the C++ client over gRPC:
   * Sends ``NotifyTyping`` events as the user types so the client can
     switch to 1 FPS capture.
   * On <Enter>, calls ``SubmitQuery`` and renders the streamed response
-    in place.
+    in place. The query carries a ``trigger_ts_us`` (typically the time
+    the current typing burst started) so the server can sample frames
+    captured around that exact moment, dashcam-style.
 
 Run after generating the gRPC stubs (``scripts/gen_proto.sh``) which
 populates ``prompt_app/generated/``.
@@ -19,6 +21,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Optional
 
 GEN_DIR = Path(__file__).resolve().parent / "generated"
 if GEN_DIR.exists():
@@ -37,8 +40,24 @@ except ImportError as exc:  # pragma: no cover
 from prompt_toolkit import PromptSession
 
 
+# Default windows, in milliseconds, around the trigger ts. A 3-second
+# pre/post window comfortably covers "지금 / 방금 / 아까" style queries
+# without inflating first-token latency too much.
+DEFAULT_PRE_WINDOW_MS = 3000
+DEFAULT_POST_WINDOW_MS = 3000
+
+
+def _now_us() -> int:
+    return int(time.time() * 1_000_000)
+
+
 class TypingDebouncer:
-    """Notifies the client when typing starts/stops, with hysteresis."""
+    """Notifies the client when typing starts/stops, with hysteresis.
+
+    Also remembers when the most recent typing burst began so the
+    submit code can anchor the VLM query to "the moment the user
+    started typing".
+    """
 
     def __init__(self, stub: pb_grpc.PromptAppStub, idle_seconds: float = 0.8):
         self._stub = stub
@@ -46,6 +65,7 @@ class TypingDebouncer:
         self._lock = threading.Lock()
         self._last_keystroke = 0.0
         self._typing = False
+        self._typing_start_us: Optional[int] = None
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -57,9 +77,20 @@ class TypingDebouncer:
             self._last_keystroke = now
             if not self._typing:
                 self._typing = True
+                self._typing_start_us = _now_us()
                 notify_start = True
         if notify_start:
             self._send(True)
+
+    def last_typing_start_us(self) -> Optional[int]:
+        """Wall-clock microseconds of the most recent typing-burst start.
+
+        Returns ``None`` if the user has never typed in this session.
+        The value is *not* cleared when typing stops, so a call made
+        immediately after <Enter> still reflects the current burst.
+        """
+        with self._lock:
+            return self._typing_start_us
 
     def shutdown(self) -> None:
         self._stop.set()
@@ -95,9 +126,22 @@ class TypingDebouncer:
             print(f"[typing notify failed] {exc.code().name}", file=sys.stderr)
 
 
-def submit_query(stub: pb_grpc.PromptAppStub, text: str) -> None:
+def submit_query(
+    stub: pb_grpc.PromptAppStub,
+    text: str,
+    trigger_ts_us: int,
+    pre_window_ms: int = DEFAULT_PRE_WINDOW_MS,
+    post_window_ms: int = DEFAULT_POST_WINDOW_MS,
+) -> None:
     sid = uuid.uuid4().hex[:8]
-    req = pb.Query(session_id=sid, text=text, num_frames_hint=0)
+    req = pb.Query(
+        session_id=sid,
+        text=text,
+        num_frames_hint=0,
+        trigger_ts_us=trigger_ts_us,
+        pre_window_ms=pre_window_ms,
+        post_window_ms=post_window_ms,
+    )
     print(f"\n[assistant] ", end="", flush=True)
     try:
         for resp in stub.SubmitQuery(req, timeout=120.0):
@@ -153,7 +197,8 @@ def main() -> None:
             line = line.strip()
             if not line:
                 continue
-            submit_query(stub, line)
+            trigger_ts_us = debouncer.last_typing_start_us() or _now_us()
+            submit_query(stub, line, trigger_ts_us=trigger_ts_us)
     finally:
         debouncer.shutdown()
         channel.close()

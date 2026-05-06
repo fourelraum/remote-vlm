@@ -56,9 +56,15 @@ class CapturePipeline {
   void EndQuery(const std::string& session_id);
 
   // Fire-and-forget: enqueue a query into the WebRTC control channel.
+  // ``trigger_ts_us`` is forwarded to the server so it can sample
+  // frames around that wall-clock instant; pre/post windows are in
+  // milliseconds.
   bool SubmitQuery(const std::string& session_id,
                    const std::string& text,
-                   uint32_t num_frames_hint);
+                   uint32_t num_frames_hint,
+                   int64_t trigger_ts_us,
+                   uint32_t pre_window_ms,
+                   uint32_t post_window_ms);
 
   void SetResponseSubscriber(ResponseSubscriber cb);
 
