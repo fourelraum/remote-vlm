@@ -1,0 +1,23 @@
+# C++ build
+client/build/
+client/build-*/
+*.o
+*.obj
+*.so
+*.a
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+prompt_app/generated/*.py
+!prompt_app/generated/__init__.py
+
+# IDE / editors
+.vscode/
+.idea/
+.DS_Store
+*.swp
