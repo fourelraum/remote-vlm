@@ -17,6 +17,7 @@ class SceneChangeDetector {
     int phash_threshold = 12;
     // Downscale used for histogram + pHash to make the detector cheap.
     int work_size = 256;
+    Config() {}
   };
 
   explicit SceneChangeDetector(Config cfg = {});

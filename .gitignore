@@ -1,6 +1,8 @@
 # C++ build
 client/build/
 client/build-*/
+tests/cpp/build/
+tests/cpp/build-*/
 *.o
 *.obj
 *.so
@@ -10,6 +12,7 @@ client/build-*/
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 .venv/
 venv/
 *.egg-info/

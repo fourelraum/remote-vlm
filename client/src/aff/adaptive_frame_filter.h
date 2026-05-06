@@ -21,6 +21,7 @@ class AdaptiveFrameFilter {
     int    diff_threshold = 25;      // |Δpixel| threshold (0..255)
     int    work_size = 320;          // downscaled comparison size
     double sharpness_floor = 25.0;   // variance-of-Laplacian below which we drop
+    Config() {}
   };
 
   enum class Decision { kAccept, kDropSimilar, kDropRate, kDropBlurry };
