@@ -54,13 +54,21 @@
 
 * `frames` data channel (binary, unordered, max-retransmits 0):
   ```
-  [seq:u32 LE][size:u32 LE][JPEG bytes]
+  [seq:u32 LE][capture_ts_us:u64 LE][size:u32 LE][JPEG bytes]
   ```
+  `capture_ts_us` 는 클라이언트 wall-clock (Unix epoch µs). 서버는 이 값을
+  prompt 의 `trigger_ts_us` 와 비교해 시간-윈도우 안의 프레임만 추론에 사용.
 * `control` data channel (text JSON, reliable):
   ```json
-  {"type":"query","session_id":"...","text":"...","num_frames_hint":0}
+  {"type":"query","session_id":"...","text":"...","num_frames_hint":0,
+   "trigger_ts_us":1715000123456789,"pre_window_ms":3000,"post_window_ms":3000}
   {"type":"response","session_id":"...","text":"...","chunk_index":0,"done":false}
   ```
+  `trigger_ts_us` 는 prompt 가 anchor 되는 wall-clock 순간 (보통 첫 키스트로크
+  시각). 서버는 `trigger_ts_us + post_window_ms` 시각 이후 프레임이 도착할
+  때까지 (혹은 `post_window_ms + 2 s` 타임아웃까지) 대기한 뒤
+  `[trigger - pre, trigger + post]` 범위로 프레임을 필터링해 VLM 에 전달.
+  `trigger_ts_us = 0` 이면 시간 필터링을 끄고 deque 전체를 사용.
 * Signaling: HTTP `POST /offer` (aiortc 데모와 동일한 패턴)
 
 ## 빌드 & 실행

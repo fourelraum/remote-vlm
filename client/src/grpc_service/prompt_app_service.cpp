@@ -59,7 +59,9 @@ class ServiceImpl final : public ::vlm::PromptApp::Service {
       sessions_[sid] = buf;
     }
 
-    if (!pipeline_->SubmitQuery(sid, req->text(), req->num_frames_hint())) {
+    if (!pipeline_->SubmitQuery(sid, req->text(), req->num_frames_hint(),
+                                req->trigger_ts_us(), req->pre_window_ms(),
+                                req->post_window_ms())) {
       ::vlm::QueryResponse err;
       err.set_session_id(sid);
       err.set_text("[error] WebRTC channel not ready");

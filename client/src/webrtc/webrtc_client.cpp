@@ -213,26 +213,39 @@ bool WebRtcClient::SendFrame(const cv::Mat& bgr_frame, uint64_t seq) {
   const std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 75};
   if (!cv::imencode(".jpg", bgr_frame, jpeg, params)) return false;
 
-  // Frame protocol: 4-byte LE seq, 4-byte LE size, then JPEG bytes.
-  std::vector<std::byte> packet(8 + jpeg.size());
+  // Frame protocol:
+  //   [seq:u32 LE][capture_ts_us:u64 LE][size:u32 LE][JPEG bytes]
+  const uint64_t ts_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                             std::chrono::system_clock::now().time_since_epoch())
+                             .count();
+  constexpr size_t kHeaderSize = 16;
+  std::vector<std::byte> packet(kHeaderSize + jpeg.size());
   uint32_t seq32 = static_cast<uint32_t>(seq);
+  uint64_t ts64  = ts_us;
   uint32_t size  = static_cast<uint32_t>(jpeg.size());
-  std::memcpy(packet.data(),     &seq32, 4);
-  std::memcpy(packet.data() + 4, &size,  4);
-  std::memcpy(packet.data() + 8, jpeg.data(), jpeg.size());
+  std::memcpy(packet.data(),      &seq32, 4);
+  std::memcpy(packet.data() + 4,  &ts64,  8);
+  std::memcpy(packet.data() + 12, &size,  4);
+  std::memcpy(packet.data() + kHeaderSize, jpeg.data(), jpeg.size());
 
   return frame_dc_->send(rtc::binary(packet.begin(), packet.end()));
 }
 
 bool WebRtcClient::SendQuery(const std::string& session_id,
                              const std::string& text,
-                             uint32_t num_frames_hint) {
+                             uint32_t num_frames_hint,
+                             int64_t trigger_ts_us,
+                             uint32_t pre_window_ms,
+                             uint32_t post_window_ms) {
   if (!control_dc_ || !control_dc_->isOpen()) return false;
   json msg = {
       {"type", "query"},
       {"session_id", session_id},
       {"text", text},
       {"num_frames_hint", num_frames_hint},
+      {"trigger_ts_us", trigger_ts_us},
+      {"pre_window_ms", pre_window_ms},
+      {"post_window_ms", post_window_ms},
   };
   return control_dc_->send(msg.dump());
 }
