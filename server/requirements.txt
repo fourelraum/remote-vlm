@@ -3,9 +3,10 @@ aiortc>=1.7
 opencv-python-headless>=4.8
 numpy>=1.24
 pillow>=10.0
-# Pin torch + transformers compatible with Qwen2-VL / Qwen2.5-VL.
-torch>=2.2
-transformers>=4.45
-accelerate>=0.30
-qwen-vl-utils>=0.0.8
+# Pin torch + transformers compatible with Qwen3-VL (4B / 8B / MoE).
+# Qwen3VLForConditionalGeneration first shipped in transformers 4.51.
+torch>=2.4
+transformers>=4.51
+accelerate>=0.34
+qwen-vl-utils>=0.0.10
 einops>=0.7
