@@ -1,8 +1,8 @@
 """On-device Qwen VLM wrapper.
 
-Loads a Qwen2-VL / Qwen2.5-VL checkpoint via Hugging Face Transformers
-and exposes a single ``generate`` coroutine that turns a list of frames
-plus a user prompt into a streamed text response.
+Loads a Qwen3-VL checkpoint via Hugging Face Transformers and exposes
+a single ``generate`` coroutine that turns a list of frames plus a
+user prompt into a streamed text response.
 
 The heavy model load happens lazily on first call so that a developer
 running ``python -m server.main --no-vlm`` can iterate on the WebRTC
@@ -25,7 +25,7 @@ logger = logging.getLogger("vlm.engine")
 
 @dataclass
 class VlmConfig:
-    model_id: str = os.environ.get("REMOTE_VLM_MODEL", "Qwen/Qwen2-VL-2B-Instruct")
+    model_id: str = os.environ.get("REMOTE_VLM_MODEL", "Qwen/Qwen3-VL-4B-Instruct")
     device: str = os.environ.get("REMOTE_VLM_DEVICE", "auto")
     max_new_tokens: int = 256
     # If True, the engine echoes a deterministic stub response instead
@@ -53,14 +53,23 @@ class VlmEngine:
             import torch  # noqa: WPS433
             from transformers import (  # noqa: WPS433
                 AutoProcessor,
-                Qwen2VLForConditionalGeneration,
+                Qwen3VLForConditionalGeneration,
             )
 
-            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+            # Qwen3-VL was trained in bfloat16; prefer it on GPUs that
+            # support it and fall back gracefully otherwise.
+            if torch.cuda.is_available():
+                dtype = (
+                    torch.bfloat16
+                    if torch.cuda.is_bf16_supported()
+                    else torch.float16
+                )
+            else:
+                dtype = torch.float32
             device_map = self.cfg.device if self.cfg.device != "auto" else "auto"
 
             self._processor = AutoProcessor.from_pretrained(self.cfg.model_id)
-            self._model = Qwen2VLForConditionalGeneration.from_pretrained(
+            self._model = Qwen3VLForConditionalGeneration.from_pretrained(
                 self.cfg.model_id,
                 torch_dtype=dtype,
                 device_map=device_map,

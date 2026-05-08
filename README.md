@@ -1,7 +1,6 @@
 # remote-vlm
 
-화면을 캡처해서 원격 VLM(Qwen2-VL/Qwen2.5-VL)에 질의하는 데스크톱 보조
-시스템.
+화면을 캡처해서 원격 VLM(Qwen3-VL)에 질의하는 데스크톱 보조 시스템.
 
 ```
 ┌──────────────┐  gRPC   ┌──────────────────────────────────────┐  WebRTC  ┌─────────────────┐
@@ -98,8 +97,8 @@ scripts/gen_proto.sh
 pip install -r server/requirements.txt
 # 모델 로딩 없이 파이프라인만 검증
 REMOTE_VLM_STUB=1 python -m server.main --host 0.0.0.0 --port 8080
-# 실제 Qwen 추론
-python -m server.main --model Qwen/Qwen2-VL-2B-Instruct
+# 실제 Qwen 추론 (default: Qwen/Qwen3-VL-4B-Instruct)
+python -m server.main --model Qwen/Qwen3-VL-4B-Instruct
 ```
 
 ### 클라이언트 빌드 / 실행

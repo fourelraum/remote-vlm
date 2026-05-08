@@ -20,8 +20,8 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--model",
-        default=os.environ.get("REMOTE_VLM_MODEL", "Qwen/Qwen2-VL-2B-Instruct"),
-        help="HuggingFace model id (Qwen2-VL or Qwen2.5-VL family)",
+        default=os.environ.get("REMOTE_VLM_MODEL", "Qwen/Qwen3-VL-4B-Instruct"),
+        help="HuggingFace model id (Qwen3-VL family)",
     )
     p.add_argument("--device", default=os.environ.get("REMOTE_VLM_DEVICE", "auto"))
     p.add_argument(
