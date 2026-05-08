@@ -6,6 +6,10 @@ pillow>=10.0
 # Pin torch + transformers compatible with Qwen3-VL (4B / 8B / MoE).
 # Qwen3VLForConditionalGeneration first shipped in transformers 4.51.
 torch>=2.4
+# torchvision is not strictly required for image-only inference, but
+# transformers >= 4.50 lazily imports it in some fast image processor
+# paths, so we pin a matching release to avoid runtime ImportError.
+torchvision>=0.19
 transformers>=4.51
 accelerate>=0.34
 qwen-vl-utils>=0.0.10
